@@ -2,7 +2,7 @@ import {BrowserModule} from '@angular/platform-browser';
 import {NgModule} from '@angular/core';
 
 import {AppComponent} from './app.component';
-import {WebsocketService} from "./websocket.service";
+import {OverlayService} from "./overlay.service";
 
 @NgModule({
     declarations: [
@@ -11,7 +11,9 @@ import {WebsocketService} from "./websocket.service";
     imports: [
         BrowserModule
     ],
-    providers: [WebsocketService],
+    providers: [
+        OverlayService
+    ],
     bootstrap: [AppComponent]
 })
 export class AppModule {

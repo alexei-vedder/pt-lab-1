@@ -1,6 +1,7 @@
-import {AfterViewInit, Component, ElementRef, HostListener, Renderer2, ViewChild} from '@angular/core';
+import {Component, ElementRef, HostListener, OnInit, Renderer2, ViewChild} from '@angular/core';
 import {atan2, cos, pi, sin, unit} from 'mathjs';
-import {WebsocketService} from "./websocket.service";
+import {OverlayService} from "./overlay.service";
+import {SERVER_ROUTE} from "../assets/route";
 
 export interface LineCoordinates {
     x1: number,
@@ -68,12 +69,12 @@ export interface CircleCoordinates {
         </main>
     `
 })
-export class AppComponent {
+export class AppComponent implements OnInit {
 
-    public readonly cannonWidth = 20;
-    public readonly cannonballWidth = 8;
+    public cannonWidth = 0;
+    public cannonballWidth = 0;
 
-    public readonly gameFieldSize = {
+    public gameFieldSize = {
         width: 600,
         height: 300
     }
@@ -98,13 +99,15 @@ export class AppComponent {
     };
 
     public playersCoordinates = {
-        "player1": 75,
-        "player2": 390
+        "player1": 50,
+        "player2": 550
     };
 
-    private currentPlayer: "player1" | "player2" = "player1";
+    private currentPlayer: "player1" | "player2";
 
     private isCannonballFlying: boolean = false;
+
+    private webSocketConnection: WebSocket;
 
     @ViewChild("gameField")
     private gameField: ElementRef;
@@ -119,7 +122,22 @@ export class AppComponent {
     private cannonball: ElementRef;
 
     constructor(private renderer: Renderer2,
-                private websocketService: WebsocketService) {
+                private overlayService: OverlayService) {
+    }
+
+    public ngOnInit() {
+        this.webSocketConnection = new WebSocket(SERVER_ROUTE);
+
+        this.webSocketConnection.onopen = () => {
+            console.log("the connection is opened");
+            this.overlayService.setOverlay("Awaiting for another player");
+        }
+
+        this.webSocketConnection.onclose = () => {
+            console.log("the connection is closed");
+        }
+
+        this.webSocketConnection.onmessage = this.onMessageFromServer.bind(this);
     }
 
     @HostListener("mousemove", ["$event.target", "$event.pageX", "$event.pageY"])
@@ -140,7 +158,7 @@ export class AppComponent {
             const xRange = this.vectorCoordinates.x2 - this.playersCoordinates[this.currentPlayer];
             const angle = atan2(yRange, xRange) * 180 / pi;
             this.animateCannonball(angle);
-           this.websocketService.sendShootInfo({angle});
+            this.sendShotInfo({angle});
         }
     }
 
@@ -180,7 +198,7 @@ export class AppComponent {
      */
     private generateFlightFunctions(angle: number): { x: Function, y: Function } {
         const g = 10;
-        const v0 = 75;
+        const v0 = 71;
 
         const x0 = this.playersCoordinates[this.currentPlayer];
         const y0 = this.findGroundYCoordinate(x0);
@@ -212,6 +230,29 @@ export class AppComponent {
         this.cannonballCoordinates = {
             x: 0,
             y: 0
+        }
+    }
+
+    private sendShotInfo(data: {angle: number}) {
+        this.webSocketConnection.send(JSON.stringify(data));
+    }
+
+    private onMessageFromServer(message: MessageEvent) {
+        const data = JSON.parse(message.data);
+        console.log(`a message from the server:`, data);
+
+        if (data.type === "RoundStarted") {
+
+            this.currentPlayer = data.currentPlayer;
+            this.playersCoordinates = data.playersCoordinates;
+            this.gameFieldSize = data.gameFieldSize;
+            this.groundCoordinates = data.groundCoordinates;
+            this.cannonWidth = data.cannonWidth;
+            this.cannonballWidth = data.cannonballWidth;
+
+            this.overlayService.resetOverlay();
+        } else if (data.type === "Awaiting") {
+            this.overlayService.setOverlay("Awaiting for another player")
         }
     }
 }
