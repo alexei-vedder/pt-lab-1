@@ -1,7 +1,6 @@
 {
   "name": "server",
   "version": "1.0.0",
-  "type": "module",
   "main": "server.js",
   "scripts": {
     "start": "node ."
@@ -9,6 +8,14 @@
   "dependencies": {
     "express": "^4.17.1",
     "http": "^0.0.1-security",
-    "ws": "^7.3.1"
+    "ws": "^7.3.1",
+    "@types/mathjs": "^6.0.5",
+    "mathjs": "^7.5.1"
+  },
+  "devDependencies": {
+    "@types/node": "^12.11.1",
+    "ts-node": "~8.3.0",
+    "tslint": "~6.1.0",
+    "typescript": "~4.0.2"
   }
 }

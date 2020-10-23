@@ -15,6 +15,8 @@ export interface CircleCoordinates {
     y: number
 }
 
+export type PlayerId = string;
+
 @Component({
     selector: 'app',
     template: `
@@ -32,14 +34,13 @@ export interface CircleCoordinates {
                       stroke-width="4px"/>
 
                 <circle [attr.r]="cannonWidth / 2"
-                        [attr.cx]="playersCoordinates['player1']"
+                        [attr.cx]="playersCoordinates ? playersCoordinates[selfId] : 0"
                         [attr.cy]="groundCoordinates.y1"/>
 
                 <circle [attr.r]="cannonWidth / 2"
-                        [attr.cx]="playersCoordinates['player2']"
+                        [attr.cx]="playersCoordinates ? playersCoordinates[opponentId] : 0"
                         [attr.cy]="groundCoordinates.y1"/>
-
-
+                
                 <marker id="arrowhead"
                         markerWidth="10"
                         markerHeight="7"
@@ -98,14 +99,27 @@ export class AppComponent implements OnInit {
         y: 0
     };
 
-    public playersCoordinates = {
-        "player1": 50,
-        "player2": 550
-    };
+    public playersCoordinates;
 
-    private currentPlayer: "player1" | "player2";
+    public isPendingShot: boolean = false;
+
+    public currentPlayerId: PlayerId;
+
+    public selfId: PlayerId;
+
+    public opponentId: PlayerId;
 
     private isCannonballFlying: boolean = false;
+
+    /**
+     * start speed (relative, doesn't affect real rendered cannonball speed)
+     */
+    private v0: number;
+
+    /**
+     * gravity const
+     */
+    private g: number;
 
     private webSocketConnection: WebSocket;
 
@@ -142,9 +156,9 @@ export class AppComponent implements OnInit {
 
     @HostListener("mousemove", ["$event.target", "$event.pageX", "$event.pageY"])
     private calculateVectorCoordinates(target, pageX, pageY) {
-        if (this.gameField.nativeElement === target) {
+        if (this.isPendingShot && this.gameField.nativeElement === target) {
             const gameFieldRect: DOMRect = target.getBoundingClientRect();
-            this.vectorCoordinates.x1 = this.playersCoordinates[this.currentPlayer];
+            this.vectorCoordinates.x1 = this.playersCoordinates[this.currentPlayerId];
             this.vectorCoordinates.y1 = this.groundCoordinates.y1;
             this.vectorCoordinates.x2 = pageX - gameFieldRect.x;
             this.vectorCoordinates.y2 = pageY - gameFieldRect.y;
@@ -153,9 +167,9 @@ export class AppComponent implements OnInit {
 
     @HostListener("click", ["$event.target"])
     private shoot(target) {
-        if (this.gameField.nativeElement === target && !this.isCannonballFlying) {
+        if (this.isPendingShot && this.gameField.nativeElement === target && !this.isCannonballFlying) {
             const yRange = this.groundCoordinates.y2 - this.vectorCoordinates.y2;
-            const xRange = this.vectorCoordinates.x2 - this.playersCoordinates[this.currentPlayer];
+            const xRange = this.vectorCoordinates.x2 - this.playersCoordinates[this.currentPlayerId];
             const angle = atan2(yRange, xRange) * 180 / pi;
             this.animateCannonball(angle);
             this.sendShotInfo({angle});
@@ -179,7 +193,7 @@ export class AppComponent implements OnInit {
             y: y(t)
         };
 
-        const flightInterval = setInterval(() => {
+        const flight = setInterval(() => {
             if (this.cannonballCoordinates.y <= this.findGroundYCoordinate(this.cannonballCoordinates.x)) {
                 this.cannonballCoordinates = {
                     x: x(t),
@@ -188,7 +202,7 @@ export class AppComponent implements OnInit {
                 t += deltaT;
             } else {
                 this.finishFlightAnimation();
-                clearInterval(flightInterval);
+                clearInterval(flight);
             }
         }, rerenderTimeout)
     }
@@ -197,17 +211,15 @@ export class AppComponent implements OnInit {
      * @param angle: in degrees
      */
     private generateFlightFunctions(angle: number): { x: Function, y: Function } {
-        const g = 10;
-        const v0 = 71;
 
-        const x0 = this.playersCoordinates[this.currentPlayer];
+        const x0 = this.playersCoordinates[this.currentPlayerId];
         const y0 = this.findGroundYCoordinate(x0);
-        const v0x = v0 * cos(unit(angle, "deg"));
-        const v0y = v0 * sin(unit(angle, "deg"));
+        const v0x = this.v0 * cos(unit(angle, "deg"));
+        const v0y = this.v0 * sin(unit(angle, "deg"));
 
         return {
             x: (t) => x0 + (v0x * t),
-            y: (t) => y0 - (v0y * t) + (g * t ** 2) / 2
+            y: (t) => y0 - (v0y * t) + (this.g * t ** 2) / 2
         }
     }
 
@@ -233,7 +245,7 @@ export class AppComponent implements OnInit {
         }
     }
 
-    private sendShotInfo(data: {angle: number}) {
+    private sendShotInfo(data: { angle: number }) {
         this.webSocketConnection.send(JSON.stringify(data));
     }
 
@@ -241,18 +253,39 @@ export class AppComponent implements OnInit {
         const data = JSON.parse(message.data);
         console.log(`a message from the server:`, data);
 
-        if (data.type === "RoundStarted") {
+        switch (data.type) {
+            case "IdNotification": {
+                this.selfId = data.id;
+                console.log("My id is", this.selfId);
+                break;
+            }
+            case "RoundStarted": {
+                this.currentPlayerId = data.currentPlayerId;
+                this.playersCoordinates = data.playersCoordinates;
+                this.gameFieldSize = data.gameFieldSize;
+                this.groundCoordinates = data.groundCoordinates;
+                this.cannonWidth = data.cannonWidth;
+                this.cannonballWidth = data.cannonballWidth;
+                this.v0 = data.v0;
+                this.g = data.g;
 
-            this.currentPlayer = data.currentPlayer;
-            this.playersCoordinates = data.playersCoordinates;
-            this.gameFieldSize = data.gameFieldSize;
-            this.groundCoordinates = data.groundCoordinates;
-            this.cannonWidth = data.cannonWidth;
-            this.cannonballWidth = data.cannonballWidth;
+                if (this.currentPlayerId === this.selfId) {
+                    this.isPendingShot = true;
+                }
 
-            this.overlayService.resetOverlay();
-        } else if (data.type === "Awaiting") {
-            this.overlayService.setOverlay("Awaiting for another player")
+                this.opponentId = Object.keys(this.playersCoordinates).find(id => id !== this.selfId);
+
+                this.overlayService.resetOverlay();
+                break;
+            }
+            case "Awaiting": {
+                this.overlayService.setOverlay("Awaiting for another player");
+                break;
+            }
+            case "OpponentShot": {
+                this.animateCannonball(data.angle);
+                break;
+            }
         }
     }
 }
