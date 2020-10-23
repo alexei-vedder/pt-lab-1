@@ -2,18 +2,7 @@ import {Component, ElementRef, HostListener, OnInit, Renderer2, ViewChild} from 
 import {atan2, cos, pi, sin, unit} from 'mathjs';
 import {OverlayService} from "./overlay.service";
 import {SERVER_ROUTE} from "../assets/route";
-
-export interface LineCoordinates {
-    x1: number,
-    y1: number,
-    x2: number,
-    y2: number
-}
-
-export interface CircleCoordinates {
-    x: number,
-    y: number
-}
+import {CircleCoordinates, GameFieldSize, LineCoordinates} from "./models";
 
 
 @Component({
@@ -25,7 +14,7 @@ export class AppComponent implements OnInit {
     public cannonWidth = 0;
     public cannonballWidth = 0;
 
-    public gameFieldSize = {
+    public gameFieldSize: GameFieldSize = {
         width: 600,
         height: 300
     }
@@ -49,7 +38,9 @@ export class AppComponent implements OnInit {
         y: 0
     };
 
-    public playersCoordinates;
+    public playersCoordinates: {
+        [playerId: string]: number
+    };
 
     public isPendingShot: boolean = false;
 
@@ -67,7 +58,7 @@ export class AppComponent implements OnInit {
     private v0: number;
 
     /**
-     * gravity const
+     * gravity constant
      */
     private g: number;
 
@@ -278,6 +269,18 @@ export class AppComponent implements OnInit {
                 new Promise(() => {
                     setTimeout(() => {
                         this.overlayService.setOverlay("Killed!", "rgba(246, 99, 99, 0.4)")
+                    }, data.doubleTimeout / 2)
+                }).then(() => {
+                    setTimeout(() => {
+                        this.overlayService.resetOverlay();
+                    }, data.doubleTimeout / 2);
+                });
+                break;
+            }
+            case "IsNotKilled": {
+                new Promise(() => {
+                    setTimeout(() => {
+                        this.overlayService.setOverlay("You're lucky!", "rgba(246, 204, 99, 0.4)")
                     }, data.doubleTimeout / 2)
                 }).then(() => {
                     setTimeout(() => {

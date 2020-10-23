@@ -2,21 +2,23 @@ import * as http from "http";
 import * as express from "express";
 import * as WebSocket from "ws";
 import {cos, sin, unit} from "mathjs";
-import {Player, RoundData} from "./models";
+import {GameFieldSize, LineCoordinates, Player, RoundData} from "./models";
+
 
 const MAX_PLAYERS_NUMBER = 2;
-const GAME_FIELD_SIZE = {
+const GAME_FIELD_SIZE: GameFieldSize = {
     width: 600,
     height: 300
 };
-const GROUND_COORDINATES = {
+
+const GROUND_COORDINATES: LineCoordinates = {
     x1: 50,
     y1: GAME_FIELD_SIZE.height - 50,
     x2: GAME_FIELD_SIZE.width - 50,
     y2: GAME_FIELD_SIZE.height - 50
 }
-const CANNON_WIDTH = 30;
-const CANNONBALL_WIDTH = 10;
+const CANNON_WIDTH = 40;
+const CANNONBALL_WIDTH = 15;
 const G = 10;
 const V0 = 71;
 const TIMEOUT_AFTER_SHOT = 4000;
@@ -104,6 +106,7 @@ const wsServer = new WebSocket.Server({server});
 
 let currentRoundData: RoundData;
 let players: Player[] = [];
+let pendingPlayers: Player[] = [];
 
 wsServer.on("connection", (ws: WebSocket) => {
 
@@ -118,6 +121,11 @@ wsServer.on("connection", (ws: WebSocket) => {
 
     if (players.length < MAX_PLAYERS_NUMBER) {
         players.push({
+            ws,
+            id: playerId
+        });
+    } else {
+        pendingPlayers.push({
             ws,
             id: playerId
         });
@@ -137,6 +145,9 @@ wsServer.on("connection", (ws: WebSocket) => {
         ws.isAlive = true;
     });
 
+    /**
+     * a client always sends messages only about his shot
+     */
     ws.on("message", (message: string) => {
         const data = JSON.parse(message);
         sendToOpponent(players, ws, {
@@ -159,6 +170,10 @@ wsServer.on("connection", (ws: WebSocket) => {
                 type: "SlipUp",
                 doubleTimeout: TIMEOUT_AFTER_SHOT
             }));
+            sendToOpponent(players, ws, {
+                type: "IsNotKilled",
+                doubleTimeout: TIMEOUT_AFTER_SHOT
+            });
         }
 
         setTimeout(() => {
@@ -174,12 +189,23 @@ wsServer.on("connection", (ws: WebSocket) => {
     ws.on("close", (message: string) => {
         console.log("Client connection is closed:", message);
         players = players.filter(player => player.ws !== ws);
+        pendingPlayers = pendingPlayers.filter(player => player.ws !== ws);
         currentRoundData = null;
         wsServer.clients.forEach((ws: WebSocket) => {
             ws.send(JSON.stringify({
                 type: "Awaiting"
             }));
         });
+        if (pendingPlayers.length !== 0 && players.length < MAX_PLAYERS_NUMBER) {
+            players.push(pendingPlayers.shift());
+        }
+        if (players.length === MAX_PLAYERS_NUMBER) {
+            currentRoundData = generateRoundData(players);
+            console.log("Current round data:", currentRoundData);
+            players.forEach((player: Player) => {
+                player.ws.send(JSON.stringify(currentRoundData));
+            });
+        }
     });
 });
 

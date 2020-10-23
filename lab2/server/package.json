@@ -1,9 +1,8 @@
 {
   "name": "server",
   "version": "1.0.0",
-  "main": "server.js",
   "scripts": {
-    "start": "node ."
+    "start": "node dist/server.js"
   },
   "dependencies": {
     "express": "^4.17.1",

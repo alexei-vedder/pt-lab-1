@@ -18,22 +18,29 @@ export class OverlayService {
     }
 
     public setOverlay(text: string = "", background: string = "rgba(0, 0, 0, 0.4)"): void {
-        this.overlay = this.renderer.createElement("div");
+        if (!this.isSet) {
+            this.overlay = this.renderer.createElement("div");
 
-        const textNode = this.renderer.createText(text);
-        this.renderer.appendChild(this.overlay, textNode);
+            const textNode = this.renderer.createText(text);
+            this.renderer.appendChild(this.overlay, textNode);
 
-        this.renderer.setAttribute(this.overlay, "class", "overlay");
-        this.renderer.setStyle(this.overlay, "background", background);
-        this.renderer.appendChild(this.document.body, this.overlay);
+            this.renderer.setAttribute(this.overlay, "class", "overlay");
+            this.renderer.setStyle(this.overlay, "background", background);
+            this.renderer.appendChild(this.document.body, this.overlay);
 
-        this.isSet = true;
+            this.isSet = true;
+            console.log("Overlay is set")
+        } else {
+            this.resetOverlay();
+            this.setOverlay(text, background);
+        }
     }
 
     public resetOverlay(): void {
         if (this.isSet) {
-            this.renderer.removeChild(this.document.body, this.overlay);
+            this.renderer.removeChild(this.document.body, this.overlay, true);
             this.isSet = false;
+            console.log("Overlay is reset")
         }
     }
 }
