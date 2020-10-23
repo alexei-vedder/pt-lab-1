@@ -2,9 +2,9 @@ import * as http from "http";
 import * as express from "express";
 import * as WebSocket from "ws";
 import {cos, sin, unit} from "mathjs";
-import {RoundData} from "./models";
+import {Player, RoundData} from "./models";
 
-const MAX_AVAILABLE_PLAYERS = 2;
+const MAX_PLAYERS_NUMBER = 2;
 const GAME_FIELD_SIZE = {
     width: 600,
     height: 300
@@ -15,16 +15,14 @@ const GROUND_COORDINATES = {
     x2: GAME_FIELD_SIZE.width - 50,
     y2: GAME_FIELD_SIZE.height - 50
 }
-const CANNON_WIDTH = 20;
-const CANNONBALL_WIDTH = 8;
+const CANNON_WIDTH = 30;
+const CANNONBALL_WIDTH = 10;
 const G = 10;
 const V0 = 71;
+const TIMEOUT_AFTER_SHOT = 4000;
 
 /**
  * a generated integer belongs to [from, to] range
- * @param from: number
- * @param to: number
- * @returns {number}
  */
 function generateInteger(from: number, to: number): number {
     const intFrom = Math.ceil(from);
@@ -36,31 +34,32 @@ function generateId(): string {
     return generateInteger(0, 100_000).toString();
 }
 
-function getRandomPlayerId(players): string {
-    const playersIds = Object.keys(players);
+function getRandomPlayerId(playersIds: string[]): string {
     const randomIndex = generateInteger(0, playersIds.length - 1);
     return playersIds[randomIndex];
 }
 
-function generateRoundData(players): RoundData {
-
+function generatePlayersCoordinates(playersIds: string[]) {
     const playersCoordinates = {};
-    const playersIds = Object.keys(players);
-
     playersIds.forEach(id => {
         playersCoordinates[id] = generateInteger(GROUND_COORDINATES.x1, GROUND_COORDINATES.x2);
     });
+    return playersCoordinates;
+}
+
+function generateRoundData(players: Player[], shootingPlayerId?: string): RoundData {
+    const playersIds = players.map(player => player.id);
 
     return {
         type: "RoundStarted",
-        currentPlayerId: getRandomPlayerId(players),
+        shootingPlayerId: shootingPlayerId ? shootingPlayerId : getRandomPlayerId(playersIds),
+        playersCoordinates: generatePlayersCoordinates(playersIds),
         gameFieldSize: GAME_FIELD_SIZE,
         groundCoordinates: GROUND_COORDINATES,
         cannonWidth: CANNON_WIDTH,
         cannonballWidth: CANNONBALL_WIDTH,
         g: G,
-        v0: V0,
-        playersCoordinates
+        v0: V0
     };
 }
 
@@ -76,14 +75,8 @@ function checkActiveClients(wsServer): void {
     });
 }
 
-function sendShotInfoToOpponents(playerId: string, angle: number): void {
-    const opponentIds: string[] = Object.keys(players).filter(id => id !== playerId);
-    opponentIds.forEach((id: string) => {
-        players[id].send(JSON.stringify({
-            type: "OpponentShot",
-            angle
-        }))
-    })
+function sendToOpponent(players: Player[], currentPlayerWS: WebSocket, message: any): void {
+    players.find(player => player.ws !== currentPlayerWS).ws.send(JSON.stringify(message));
 }
 
 /**
@@ -94,7 +87,7 @@ function sendShotInfoToOpponents(playerId: string, angle: number): void {
  * t = 2 * v0y / g
  * x = x0 + v0x * t
  */
-function isOpponentHit(coordinates: { [key: string]: number }, shooterId: string, angle: number): boolean {
+function isOpponentKilled(coordinates: { [key: string]: number }, shooterId: string, angle: number): boolean {
     const v0y = V0 * sin(unit(angle, "deg"));
     const v0x = V0 * cos(unit(angle, "deg"));
     const fallTime = 2 * v0y / G;
@@ -110,25 +103,31 @@ const server = http.createServer(express());
 const wsServer = new WebSocket.Server({server});
 
 let currentRoundData: RoundData;
-const players = {};
+let players: Player[] = [];
 
 wsServer.on("connection", (ws: WebSocket) => {
-    console.log("a player is connected");
 
-    const playerId = generateId();
+    const playerId: string = generateId();
+    console.log(`a player ${playerId} is connected`);
+
+
     ws.send(JSON.stringify({
         type: "IdNotification",
         id: playerId
     }));
 
-    if (Object.keys(players).length < MAX_AVAILABLE_PLAYERS - 1) {
-        players[playerId] = ws;
-    } else if (Object.keys(players).length === MAX_AVAILABLE_PLAYERS - 1) {
-        players[playerId] = ws;
+    if (players.length < MAX_PLAYERS_NUMBER) {
+        players.push({
+            ws,
+            id: playerId
+        });
+    }
+
+    if (players.length === MAX_PLAYERS_NUMBER) {
         currentRoundData = currentRoundData ? currentRoundData : generateRoundData(players);
-        console.log("Current round data:", currentRoundData)
-        wsServer.clients.forEach((ws: WebSocket) => {
-            ws.send(JSON.stringify(currentRoundData));
+        console.log("Current round data:", currentRoundData);
+        players.forEach((player: Player) => {
+            player.ws.send(JSON.stringify(currentRoundData));
         });
     }
 
@@ -140,18 +139,41 @@ wsServer.on("connection", (ws: WebSocket) => {
 
     ws.on("message", (message: string) => {
         const data = JSON.parse(message);
+        sendToOpponent(players, ws, {
+            type: "OpponentShot",
+            angle: data.angle
+        });
         console.log("Got a message:", message, "from player", playerId);
-        isOpponentHit(currentRoundData.playersCoordinates, playerId, data.angle);
-        sendShotInfoToOpponents(playerId, data.angle);
+
+        if (isOpponentKilled(currentRoundData.playersCoordinates, playerId, data.angle)) {
+            ws.send(JSON.stringify({
+                type: "HaveKilled",
+                doubleTimeout: TIMEOUT_AFTER_SHOT
+            }));
+            sendToOpponent(players, ws, {
+                type: "IsKilled",
+                doubleTimeout: TIMEOUT_AFTER_SHOT
+            });
+        } else {
+            ws.send(JSON.stringify({
+                type: "SlipUp",
+                doubleTimeout: TIMEOUT_AFTER_SHOT
+            }));
+        }
+
+        setTimeout(() => {
+            const nextShootingPlayerId = players.find((player: Player) => currentRoundData.shootingPlayerId !== player.id).id
+            currentRoundData = generateRoundData(players, nextShootingPlayerId);
+            console.log("Current round data:", currentRoundData);
+            players.forEach((player: Player) => {
+                player.ws.send(JSON.stringify(currentRoundData));
+            });
+        }, TIMEOUT_AFTER_SHOT);
     });
 
     ws.on("close", (message: string) => {
         console.log("Client connection is closed:", message);
-        for (let id in players) {
-            if (players[id] === ws) {
-                delete players[id];
-            }
-        }
+        players = players.filter(player => player.ws !== ws);
         currentRoundData = null;
         wsServer.clients.forEach((ws: WebSocket) => {
             ws.send(JSON.stringify({

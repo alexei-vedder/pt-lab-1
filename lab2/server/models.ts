@@ -1,10 +1,14 @@
-export interface Player {
+import * as WebSocket from "ws";
 
+export interface Player {
+    ws: WebSocket;
+    id: string;
+    name?: string
 }
 
 export interface RoundData {
     type: string,
-    currentPlayerId: string,
+    shootingPlayerId: string,
     gameFieldSize: { width: number, height: number },
     groundCoordinates: {
         x1: number,

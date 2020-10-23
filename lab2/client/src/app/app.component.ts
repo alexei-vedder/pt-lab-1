@@ -15,60 +15,10 @@ export interface CircleCoordinates {
     y: number
 }
 
-export type PlayerId = string;
 
 @Component({
     selector: 'app',
-    template: `
-        <main class="main-container">
-            <svg #gameField
-                 [attr.width]="gameFieldSize.width"
-                 [attr.height]="gameFieldSize.height">
-
-                <line #ground
-                      [attr.x1]="groundCoordinates.x1"
-                      [attr.y1]="groundCoordinates.y1"
-                      [attr.x2]="groundCoordinates.x2"
-                      [attr.y2]="groundCoordinates.y2"
-                      stroke="black"
-                      stroke-width="4px"/>
-
-                <circle [attr.r]="cannonWidth / 2"
-                        [attr.cx]="playersCoordinates ? playersCoordinates[selfId] : 0"
-                        [attr.cy]="groundCoordinates.y1"/>
-
-                <circle [attr.r]="cannonWidth / 2"
-                        [attr.cx]="playersCoordinates ? playersCoordinates[opponentId] : 0"
-                        [attr.cy]="groundCoordinates.y1"/>
-                
-                <marker id="arrowhead"
-                        markerWidth="10"
-                        markerHeight="7"
-                        refX="10"
-                        refY="3.5"
-                        orient="auto">
-                    <polygon points="0 0, 10 3.5, 0 7"/>
-                </marker>
-
-                <line #vector
-                      [attr.x1]="vectorCoordinates.x1"
-                      [attr.y1]="vectorCoordinates.y1"
-                      [attr.x2]="vectorCoordinates.x2"
-                      [attr.y2]="vectorCoordinates.y2"
-                      marker-end="url(#arrowhead)"
-                      stroke="grey"
-                      stroke-width="2px"
-                      stroke-dasharray="4"/>
-
-                <circle #cannonball
-                        style="display: none"
-                        [attr.r]="cannonballWidth / 2"
-                        [attr.cx]="cannonballCoordinates.x"
-                        [attr.cy]="cannonballCoordinates.y"/>
-
-            </svg>
-        </main>
-    `
+    templateUrl: "app.component.html"
 })
 export class AppComponent implements OnInit {
 
@@ -103,11 +53,11 @@ export class AppComponent implements OnInit {
 
     public isPendingShot: boolean = false;
 
-    public currentPlayerId: PlayerId;
+    public shootingPlayerId: string;
 
-    public selfId: PlayerId;
+    public selfId: string;
 
-    public opponentId: PlayerId;
+    public opponentId: string;
 
     private isCannonballFlying: boolean = false;
 
@@ -158,22 +108,36 @@ export class AppComponent implements OnInit {
     private calculateVectorCoordinates(target, pageX, pageY) {
         if (this.isPendingShot && this.gameField.nativeElement === target) {
             const gameFieldRect: DOMRect = target.getBoundingClientRect();
-            this.vectorCoordinates.x1 = this.playersCoordinates[this.currentPlayerId];
-            this.vectorCoordinates.y1 = this.groundCoordinates.y1;
-            this.vectorCoordinates.x2 = pageX - gameFieldRect.x;
-            this.vectorCoordinates.y2 = pageY - gameFieldRect.y;
+            this.vectorCoordinates = {
+                x1: this.playersCoordinates[this.shootingPlayerId],
+                y1: this.groundCoordinates.y1,
+                x2: pageX - gameFieldRect.x,
+                y2: pageY - gameFieldRect.y
+            }
+        } else {
+            this.resetVectorCoordinates();
         }
     }
 
     @HostListener("click", ["$event.target"])
     private shoot(target) {
         if (this.isPendingShot && this.gameField.nativeElement === target && !this.isCannonballFlying) {
+            this.isPendingShot = false;
             const yRange = this.groundCoordinates.y2 - this.vectorCoordinates.y2;
-            const xRange = this.vectorCoordinates.x2 - this.playersCoordinates[this.currentPlayerId];
+            const xRange = this.vectorCoordinates.x2 - this.playersCoordinates[this.shootingPlayerId];
             const angle = atan2(yRange, xRange) * 180 / pi;
             this.animateCannonball(angle);
             this.sendShotInfo({angle});
         }
+    }
+
+    private resetVectorCoordinates(): void {
+        this.vectorCoordinates = {
+            x1: 0,
+            y1: 0,
+            x2: 0,
+            y2: 0
+        };
     }
 
     /**
@@ -212,7 +176,7 @@ export class AppComponent implements OnInit {
      */
     private generateFlightFunctions(angle: number): { x: Function, y: Function } {
 
-        const x0 = this.playersCoordinates[this.currentPlayerId];
+        const x0 = this.playersCoordinates[this.shootingPlayerId];
         const y0 = this.findGroundYCoordinate(x0);
         const v0x = this.v0 * cos(unit(angle, "deg"));
         const v0y = this.v0 * sin(unit(angle, "deg"));
@@ -260,7 +224,7 @@ export class AppComponent implements OnInit {
                 break;
             }
             case "RoundStarted": {
-                this.currentPlayerId = data.currentPlayerId;
+                this.shootingPlayerId = data.shootingPlayerId;
                 this.playersCoordinates = data.playersCoordinates;
                 this.gameFieldSize = data.gameFieldSize;
                 this.groundCoordinates = data.groundCoordinates;
@@ -269,9 +233,9 @@ export class AppComponent implements OnInit {
                 this.v0 = data.v0;
                 this.g = data.g;
 
-                if (this.currentPlayerId === this.selfId) {
-                    this.isPendingShot = true;
-                }
+                this.resetVectorCoordinates();
+
+                this.isPendingShot = this.shootingPlayerId === this.selfId;
 
                 this.opponentId = Object.keys(this.playersCoordinates).find(id => id !== this.selfId);
 
@@ -284,6 +248,42 @@ export class AppComponent implements OnInit {
             }
             case "OpponentShot": {
                 this.animateCannonball(data.angle);
+                break;
+            }
+            case "HaveKilled": {
+                new Promise(() => {
+                    setTimeout(() => {
+                        this.overlayService.setOverlay("Nice shot!", "rgba(164, 238, 119, 0.4)")
+                    }, data.doubleTimeout / 2);
+                }).then(() => {
+                    setTimeout(() => {
+                        this.overlayService.resetOverlay();
+                    }, data.doubleTimeout / 2);
+                });
+                break;
+            }
+            case "SlipUp": {
+                new Promise(() => {
+                    setTimeout(() => {
+                        this.overlayService.setOverlay("Slip-up!", "rgba(246, 99, 99, 0.4)")
+                    }, data.doubleTimeout / 2)
+                }).then(() => {
+                    setTimeout(() => {
+                        this.overlayService.resetOverlay();
+                    }, data.doubleTimeout / 2);
+                });
+                break;
+            }
+            case "IsKilled": {
+                new Promise(() => {
+                    setTimeout(() => {
+                        this.overlayService.setOverlay("Killed!", "rgba(246, 99, 99, 0.4)")
+                    }, data.doubleTimeout / 2)
+                }).then(() => {
+                    setTimeout(() => {
+                        this.overlayService.resetOverlay();
+                    }, data.doubleTimeout / 2);
+                });
                 break;
             }
         }

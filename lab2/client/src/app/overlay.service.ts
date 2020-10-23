@@ -10,14 +10,23 @@ export class OverlayService {
 
     private isSet: boolean = false;
 
+    private isCreated: boolean = false;
+
     constructor(rendererFactory: RendererFactory2,
                 @Inject(DOCUMENT) private document) {
         this.renderer = rendererFactory.createRenderer(null, null);
     }
 
-    public setOverlay(text?: string): void {
-        this.generateOverlayElement(text);
+    public setOverlay(text: string = "", background: string = "rgba(0, 0, 0, 0.4)"): void {
+        this.overlay = this.renderer.createElement("div");
+
+        const textNode = this.renderer.createText(text);
+        this.renderer.appendChild(this.overlay, textNode);
+
+        this.renderer.setAttribute(this.overlay, "class", "overlay");
+        this.renderer.setStyle(this.overlay, "background", background);
         this.renderer.appendChild(this.document.body, this.overlay);
+
         this.isSet = true;
     }
 
@@ -26,14 +35,5 @@ export class OverlayService {
             this.renderer.removeChild(this.document.body, this.overlay);
             this.isSet = false;
         }
-    }
-
-    private generateOverlayElement(text?: string) {
-        this.overlay = this.renderer.createElement("div");
-        if (text) {
-            const textNode = this.renderer.createText(text);
-            this.renderer.appendChild(this.overlay, textNode);
-        }
-        this.renderer.setAttribute(this.overlay, "class", "overlay");
     }
 }
