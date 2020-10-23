@@ -209,22 +209,7 @@ export class AppComponent implements OnInit {
                 break;
             }
             case "RoundStarted": {
-                this.shootingPlayerId = data.shootingPlayerId;
-                this.playersCoordinates = data.playersCoordinates;
-                this.gameFieldSize = data.gameFieldSize;
-                this.groundCoordinates = data.groundCoordinates;
-                this.cannonWidth = data.cannonWidth;
-                this.cannonballWidth = data.cannonballWidth;
-                this.v0 = data.v0;
-                this.g = data.g;
-
-                this.resetVectorCoordinates();
-
-                this.isPendingShot = this.shootingPlayerId === this.selfId;
-
-                this.opponentId = Object.keys(this.playersCoordinates).find(id => id !== this.selfId);
-
-                this.overlayService.resetOverlay();
+                this.startRound(data);
                 break;
             }
             case "Awaiting": {
@@ -236,53 +221,72 @@ export class AppComponent implements OnInit {
                 break;
             }
             case "HaveKilled": {
-                new Promise(() => {
-                    setTimeout(() => {
-                        this.overlayService.setOverlay("Nice shot!", "rgba(164, 238, 119, 0.4)")
-                    }, data.doubleTimeout / 2);
-                }).then(() => {
-                    setTimeout(() => {
-                        this.overlayService.resetOverlay();
-                    }, data.doubleTimeout / 2);
-                });
+                this.showGameplayInfo(
+                    "Nice shot!",
+                    "rgba(164, 238, 119, 0.4)",
+                    data.doubleTimeout / 2,
+                    data.doubleTimeout / 2
+                );
                 break;
             }
             case "SlipUp": {
-                new Promise(() => {
-                    setTimeout(() => {
-                        this.overlayService.setOverlay("Slip-up!", "rgba(246, 99, 99, 0.4)")
-                    }, data.doubleTimeout / 2)
-                }).then(() => {
-                    setTimeout(() => {
-                        this.overlayService.resetOverlay();
-                    }, data.doubleTimeout / 2);
-                });
+                this.showGameplayInfo(
+                    "Slip-up!",
+                    "rgba(246, 99, 99, 0.4)",
+                    data.doubleTimeout / 2,
+                    data.doubleTimeout / 2
+                );
                 break;
             }
             case "IsKilled": {
-                new Promise(() => {
-                    setTimeout(() => {
-                        this.overlayService.setOverlay("Killed!", "rgba(246, 99, 99, 0.4)")
-                    }, data.doubleTimeout / 2)
-                }).then(() => {
-                    setTimeout(() => {
-                        this.overlayService.resetOverlay();
-                    }, data.doubleTimeout / 2);
-                });
+                this.showGameplayInfo(
+                    "Killed!",
+                    "rgba(246, 99, 99, 0.4)",
+                    data.doubleTimeout / 2,
+                    data.doubleTimeout / 2
+                );
                 break;
             }
             case "IsNotKilled": {
-                new Promise(() => {
-                    setTimeout(() => {
-                        this.overlayService.setOverlay("You're lucky!", "rgba(246, 204, 99, 0.4)")
-                    }, data.doubleTimeout / 2)
-                }).then(() => {
-                    setTimeout(() => {
-                        this.overlayService.resetOverlay();
-                    }, data.doubleTimeout / 2);
-                });
+                this.showGameplayInfo(
+                    "You're lucky!",
+                    "rgba(246, 204, 99, 0.4)",
+                    data.doubleTimeout / 2,
+                    data.doubleTimeout / 2
+                );
                 break;
             }
         }
+    }
+
+    private startRound(data): void {
+        this.shootingPlayerId = data.shootingPlayerId;
+        this.playersCoordinates = data.playersCoordinates;
+        this.gameFieldSize = data.gameFieldSize;
+        this.groundCoordinates = data.groundCoordinates;
+        this.cannonWidth = data.cannonWidth;
+        this.cannonballWidth = data.cannonballWidth;
+        this.v0 = data.v0;
+        this.g = data.g;
+
+        this.resetVectorCoordinates();
+
+        this.isPendingShot = this.shootingPlayerId === this.selfId;
+
+        this.opponentId = Object.keys(this.playersCoordinates).find(id => id !== this.selfId);
+
+        this.overlayService.resetOverlay();
+    }
+
+    private showGameplayInfo(message, background, timeoutBeforeShowing, showingTimeout): void {
+        new Promise(() => {
+            setTimeout(() => {
+                this.overlayService.setOverlay(message, background)
+            }, timeoutBeforeShowing)
+        }).then(() => {
+            setTimeout(() => {
+                this.overlayService.resetOverlay();
+            }, showingTimeout);
+        });
     }
 }
