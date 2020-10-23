@@ -29,7 +29,6 @@ export class OverlayService {
             this.renderer.appendChild(this.document.body, this.overlay);
 
             this.isSet = true;
-            console.log("Overlay is set")
         } else {
             this.resetOverlay();
             this.setOverlay(text, background);
@@ -40,7 +39,6 @@ export class OverlayService {
         if (this.isSet) {
             this.renderer.removeChild(this.document.body, this.overlay, true);
             this.isSet = false;
-            console.log("Overlay is reset")
         }
     }
 }

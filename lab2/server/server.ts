@@ -16,7 +16,7 @@ const GROUND_COORDINATES: LineCoordinates = {
     y1: GAME_FIELD_SIZE.height - 50,
     x2: GAME_FIELD_SIZE.width - 50,
     y2: GAME_FIELD_SIZE.height - 50
-}
+};
 const CANNON_WIDTH = 40;
 const CANNONBALL_WIDTH = 15;
 const G = 10;

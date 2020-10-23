@@ -44,11 +44,11 @@ export class AppComponent implements OnInit {
 
     public isPendingShot: boolean = false;
 
-    public shootingPlayerId: string;
-
     public selfId: string;
 
     public opponentId: string;
+
+    private shootingPlayerId: string;
 
     private isCannonballFlying: boolean = false;
 
@@ -66,12 +66,6 @@ export class AppComponent implements OnInit {
 
     @ViewChild("gameField")
     private gameField: ElementRef;
-
-    @ViewChild("ground")
-    private ground: ElementRef;
-
-    @ViewChild("vector")
-    private vector: ElementRef;
 
     @ViewChild("cannonball")
     private cannonball: ElementRef;
