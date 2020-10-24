@@ -198,14 +198,16 @@ wsServer.on("connection", (ws: WebSocket) => {
         });
         if (pendingPlayers.length !== 0 && players.length < MAX_PLAYERS_NUMBER) {
             players.push(pendingPlayers.shift());
+
+            if (players.length === MAX_PLAYERS_NUMBER) {
+                currentRoundData = generateRoundData(players);
+                console.log("Current round data:", currentRoundData);
+                players.forEach((player: Player) => {
+                    player.ws.send(JSON.stringify(currentRoundData));
+                });
+            }
         }
-        if (players.length === MAX_PLAYERS_NUMBER) {
-            currentRoundData = generateRoundData(players);
-            console.log("Current round data:", currentRoundData);
-            players.forEach((player: Player) => {
-                player.ws.send(JSON.stringify(currentRoundData));
-            });
-        }
+
     });
 });
 
