@@ -1,49 +1,49 @@
 <main class="main-container">
     <svg #gameField
-         [attr.width]="gameFieldSize.width"
-         [attr.height]="gameFieldSize.height">
+         [attr.height]="gameFieldSize.height"
+         [attr.width]="gameFieldSize.width">
 
         <line #ground
               [attr.x1]="groundCoordinates.x1"
-              [attr.y1]="groundCoordinates.y1"
               [attr.x2]="groundCoordinates.x2"
+              [attr.y1]="groundCoordinates.y1"
               [attr.y2]="groundCoordinates.y2"
               stroke="black"
               stroke-width="4px"/>
 
-        <circle fill="red"
+        <circle [attr.cx]="playersCoordinates ? playersCoordinates[selfId] : 0"
+                [attr.cy]="groundCoordinates.y1"
                 [attr.r]="cannonWidth / 2"
-                [attr.cx]="playersCoordinates ? playersCoordinates[selfId] : 0"
-                [attr.cy]="groundCoordinates.y1"/>
+                fill="red"/>
 
-        <circle [attr.r]="cannonWidth / 2"
-                [attr.cx]="playersCoordinates ? playersCoordinates[opponentId] : 0"
-                [attr.cy]="groundCoordinates.y1"/>
+        <circle [attr.cx]="playersCoordinates ? playersCoordinates[opponentId] : 0"
+                [attr.cy]="groundCoordinates.y1"
+                [attr.r]="cannonWidth / 2"/>
 
         <marker id="arrowhead"
-                markerWidth="10"
                 markerHeight="7"
+                markerWidth="10"
+                orient="auto"
                 refX="10"
-                refY="3.5"
-                orient="auto">
+                refY="3.5">
             <polygon points="0 0, 10 3.5, 0 7"/>
         </marker>
 
         <line #vector
               [attr.x1]="vectorCoordinates.x1"
-              [attr.y1]="vectorCoordinates.y1"
               [attr.x2]="vectorCoordinates.x2"
+              [attr.y1]="vectorCoordinates.y1"
               [attr.y2]="vectorCoordinates.y2"
               marker-end="url(#arrowhead)"
               stroke="grey"
-              stroke-width="2px"
-              stroke-dasharray="4"/>
+              stroke-dasharray="4"
+              stroke-width="2px"/>
 
         <circle #cannonball
-                style="display: none"
-                [attr.r]="cannonballWidth / 2"
                 [attr.cx]="cannonballCoordinates.x"
-                [attr.cy]="cannonballCoordinates.y"/>
+                [attr.cy]="cannonballCoordinates.y"
+                [attr.r]="cannonballWidth / 2"
+                style="display: none"/>
 
     </svg>
 </main>

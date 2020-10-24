@@ -104,6 +104,7 @@
           }
         }
       }
-    }},
+    }
+  },
   "defaultProject": "client"
 }

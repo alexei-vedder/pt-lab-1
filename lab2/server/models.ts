@@ -3,7 +3,6 @@ import * as WebSocket from "ws";
 export interface Player {
     ws: WebSocket;
     id: string;
-    name?: string
 }
 
 export interface LineCoordinates {
@@ -17,7 +16,6 @@ export interface GameFieldSize {
     width: number,
     height: number
 }
-
 
 export interface RoundData {
     type: string,

@@ -268,13 +268,9 @@ export class AppComponent implements OnInit {
         this.cannonballWidth = data.cannonballWidth;
         this.v0 = data.v0;
         this.g = data.g;
-
         this.resetVectorCoordinates();
-
         this.isPendingShot = this.shootingPlayerId === this.selfId;
-
         this.opponentId = Object.keys(this.playersCoordinates).find(id => id !== this.selfId);
-
         this.overlayService.resetOverlay();
     }
 
