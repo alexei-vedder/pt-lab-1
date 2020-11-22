@@ -3,6 +3,7 @@ import * as express from "express";
 import * as WebSocket from "ws";
 import {cos, sin, unit} from "mathjs";
 import {GameFieldSize, LineCoordinates, Player, RoundData} from "./models";
+import {validate} from "jsonschema";
 
 
 const MAX_PLAYERS_NUMBER = 2;
@@ -81,6 +82,18 @@ function sendToOpponent(players: Player[], currentPlayerWS: WebSocket, message: 
     players.find(player => player.ws !== currentPlayerWS).ws.send(JSON.stringify(message));
 }
 
+function validateShotInfoMessage(data: Object): boolean {
+    const validation = validate(data, require("./schemas/shot-info-schema.json"));
+    console.log("Shot info validation:", validation)
+    return validation.valid;
+}
+
+function validatePlayerNicknameMessage(data: Object): boolean {
+    const validation = validate(data, require("./schemas/player-nickname-schema.json"));
+    console.log("Player nickname validation:", validation)
+    return validation.valid;
+}
+
 /**
  * The system should be:
  * y = y0 - v0y * t + (g * t**2) / 2
@@ -150,40 +163,48 @@ wsServer.on("connection", (ws: WebSocket) => {
      */
     ws.on("message", (message: string) => {
         const data = JSON.parse(message);
-        sendToOpponent(players, ws, {
-            type: "OpponentShot",
-            angle: data.angle
-        });
         console.log("Got a message:", message, "from player", playerId);
 
-        if (isOpponentKilled(currentRoundData.playersCoordinates, playerId, data.angle)) {
-            ws.send(JSON.stringify({
-                type: "HaveKilled",
-                doubleTimeout: TIMEOUT_AFTER_SHOT
-            }));
+        if (validatePlayerNicknameMessage(data)) {
+            players.concat(...pendingPlayers).find((player: Player) => player.ws === ws).nickname = data.nickname;
+        } else if (validateShotInfoMessage(data)) {
             sendToOpponent(players, ws, {
-                type: "IsKilled",
-                doubleTimeout: TIMEOUT_AFTER_SHOT
+                type: "OpponentShot",
+                angle: data.angle
             });
-        } else {
-            ws.send(JSON.stringify({
-                type: "SlipUp",
-                doubleTimeout: TIMEOUT_AFTER_SHOT
-            }));
-            sendToOpponent(players, ws, {
-                type: "IsNotKilled",
-                doubleTimeout: TIMEOUT_AFTER_SHOT
-            });
-        }
 
-        setTimeout(() => {
-            const nextShootingPlayerId = players.find((player: Player) => currentRoundData.shootingPlayerId !== player.id).id
-            currentRoundData = generateRoundData(players, nextShootingPlayerId);
-            console.log("Current round data:", currentRoundData);
-            players.forEach((player: Player) => {
-                player.ws.send(JSON.stringify(currentRoundData));
-            });
-        }, TIMEOUT_AFTER_SHOT);
+            if (isOpponentKilled(currentRoundData.playersCoordinates, playerId, data.angle)) {
+                ws.send(JSON.stringify({
+                    type: "HaveKilled",
+                    doubleTimeout: TIMEOUT_AFTER_SHOT
+                }));
+                sendToOpponent(players, ws, {
+                    type: "IsKilled",
+                    doubleTimeout: TIMEOUT_AFTER_SHOT
+                });
+            } else {
+                ws.send(JSON.stringify({
+                    type: "SlipUp",
+                    doubleTimeout: TIMEOUT_AFTER_SHOT
+                }));
+                sendToOpponent(players, ws, {
+                    type: "IsNotKilled",
+                    doubleTimeout: TIMEOUT_AFTER_SHOT
+                });
+            }
+
+            setTimeout(() => {
+                const nextShootingPlayerId = players.find((player: Player) => currentRoundData.shootingPlayerId !== player.id).id
+                currentRoundData = generateRoundData(players, nextShootingPlayerId);
+                console.log("Current round data:", currentRoundData);
+                players.forEach((player: Player) => {
+                    player.ws.send(JSON.stringify(currentRoundData));
+                });
+            }, TIMEOUT_AFTER_SHOT);
+        }
+        else {
+            console.warn(`Player ${playerId} sent a message of an unknown format: ${message}`)
+        }
     });
 
     ws.on("close", (message: string) => {

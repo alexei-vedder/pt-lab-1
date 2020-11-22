@@ -3,6 +3,7 @@ import * as WebSocket from "ws";
 export interface Player {
     ws: WebSocket;
     id: string;
+    nickname?: string;
 }
 
 export interface LineCoordinates {

@@ -7,7 +7,7 @@
     "build": "ng build --prod",
     "test": "ng test",
     "lint": "ng lint",
-    "deploy": "lite-server --baseDir='./dist/client/'"
+    "deploy": "lite-server --baseDir=\"./dist/client/\""
   },
   "private": true,
   "dependencies": {

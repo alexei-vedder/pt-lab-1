@@ -48,6 +48,8 @@ export class AppComponent implements OnInit {
 
     public opponentId: string;
 
+    public playerNickname: string;
+
     private shootingPlayerId: string;
 
     private isCannonballFlying: boolean = false;
@@ -75,18 +77,12 @@ export class AppComponent implements OnInit {
     }
 
     public ngOnInit() {
-        this.webSocketConnection = new WebSocket(SERVER_ROUTE);
-
-        this.webSocketConnection.onopen = () => {
-            console.log("the connection is opened");
-            this.overlayService.setOverlay("Awaiting for another player");
+        this.playerNickname = prompt("Enter your nickname");
+        if (this.playerNickname) {
+            this.connectToServer();
+        } else {
+            alert("Connection denied. Reload the page and try to enter your name one more time");
         }
-
-        this.webSocketConnection.onclose = () => {
-            console.log("the connection is closed");
-        }
-
-        this.webSocketConnection.onmessage = this.onMessageFromServer.bind(this);
     }
 
     @HostListener("mousemove", ["$event.target", "$event.pageX", "$event.pageY"])
@@ -112,8 +108,24 @@ export class AppComponent implements OnInit {
             const xRange = this.vectorCoordinates.x2 - this.playersCoordinates[this.shootingPlayerId];
             const angle = atan2(yRange, xRange) * 180 / pi;
             this.animateCannonball(angle);
-            this.sendShotInfo({angle});
+            this.sendShotInfo(angle);
         }
+    }
+
+    private connectToServer() {
+        this.webSocketConnection = new WebSocket(SERVER_ROUTE);
+
+        this.webSocketConnection.onopen = () => {
+            console.log("the connection is opened");
+            this.sendPlayerNickname();
+            this.overlayService.setOverlay("Awaiting for another player");
+        }
+
+        this.webSocketConnection.onclose = () => {
+            console.log("the connection is closed");
+        }
+
+        this.webSocketConnection.onmessage = this.onMessageFromServer.bind(this);
     }
 
     private resetVectorCoordinates(): void {
@@ -194,8 +206,12 @@ export class AppComponent implements OnInit {
         }
     }
 
-    private sendShotInfo(data: { angle: number }) {
-        this.webSocketConnection.send(JSON.stringify(data));
+    private sendShotInfo(angle: number) {
+        this.webSocketConnection.send(JSON.stringify({angle}));
+    }
+
+    private sendPlayerNickname() {
+        this.webSocketConnection.send(JSON.stringify({nickname: this.playerNickname}));
     }
 
     private onMessageFromServer(message: MessageEvent) {
