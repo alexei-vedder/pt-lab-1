@@ -1,20 +1,14 @@
 {
-  "$ref": "#/definitions/ShotInfoSchema",
-  "definitions": {
-    "ShotInfoSchema": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "angle": {
-          "type": "number",
-          "minimum": -180,
-          "maximum": 180
-        }
-      },
-      "required": [
-        "angle"
-      ],
-      "title": "ShotInfoSchema"
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "angle": {
+      "type": "number",
+      "minimum": -180,
+      "maximum": 180
     }
-  }
+  },
+  "required": [
+    "angle"
+  ]
 }

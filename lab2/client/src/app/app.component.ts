@@ -2,7 +2,15 @@ import {Component, ElementRef, HostListener, OnInit, Renderer2, ViewChild} from 
 import {atan2, cos, pi, sin, unit} from 'mathjs';
 import {OverlayService} from "./overlay.service";
 import {SERVER_ROUTE} from "../assets/route";
-import {CircleCoordinates, GameFieldSize, LineCoordinates} from "./models";
+import {
+    CircleCoordinates,
+    GameFieldSize,
+    LineCoordinates,
+    ScoreTableEntity,
+    ServerMessage,
+    ServerMessageType
+} from "./models";
+import {ValidatorService} from "./validator.service";
 
 
 @Component({
@@ -50,6 +58,8 @@ export class AppComponent implements OnInit {
 
     public playerNickname: string;
 
+    public statistics: ScoreTableEntity[];
+
     private shootingPlayerId: string;
 
     private isCannonballFlying: boolean = false;
@@ -73,7 +83,8 @@ export class AppComponent implements OnInit {
     private cannonball: ElementRef;
 
     constructor(private renderer: Renderer2,
-                private overlayService: OverlayService) {
+                private overlayService: OverlayService,
+                private validatorService: ValidatorService) {
     }
 
     public ngOnInit() {
@@ -122,6 +133,7 @@ export class AppComponent implements OnInit {
         }
 
         this.webSocketConnection.onclose = () => {
+            this.overlayService.setOverlay("The server is not available", "rgba(246, 99, 99, 0.4)")
             console.log("the connection is closed");
         }
 
@@ -214,63 +226,70 @@ export class AppComponent implements OnInit {
         this.webSocketConnection.send(JSON.stringify({nickname: this.playerNickname}));
     }
 
-    private onMessageFromServer(message: MessageEvent) {
-        const data = JSON.parse(message.data);
-        console.log(`a message from the server:`, data);
+    private onMessageFromServer(messageEvent: MessageEvent) {
+        const message: ServerMessage = JSON.parse(messageEvent.data);
+        console.log(`a message from the server:`, message);
 
-        switch (data.type) {
-            case "IdNotification": {
-                this.selfId = data.id;
+        if (!this.validatorService.isServerMessageValid(message)) {
+            throw new Error("Invalid message from server!" + messageEvent.data);
+        }
+
+        switch (message.type) {
+            case ServerMessageType.IdNotification: {
+                this.selfId = message.data.id;
                 console.log("My id is", this.selfId);
                 break;
             }
-            case "RoundStarted": {
-                this.startRound(data);
+            case ServerMessageType.RoundStarted: {
+                this.startRound(message.data);
                 break;
             }
-            case "Awaiting": {
+            case ServerMessageType.Awaiting: {
                 this.overlayService.setOverlay("Awaiting for another player");
                 break;
             }
-            case "OpponentShot": {
-                this.animateCannonball(data.angle);
+            case ServerMessageType.OpponentShot: {
+                this.animateCannonball(message.data.angle);
                 break;
             }
-            case "HaveKilled": {
+            case ServerMessageType.HaveKilled: {
                 this.showGameplayInfo(
                     "Nice shot!",
                     "rgba(164, 238, 119, 0.4)",
-                    data.doubleTimeout / 2,
-                    data.doubleTimeout / 2
+                    message.data.doubleTimeout / 2,
+                    message.data.doubleTimeout / 2
                 );
                 break;
             }
-            case "SlipUp": {
+            case ServerMessageType.SlipUp: {
                 this.showGameplayInfo(
                     "Slip-up!",
                     "rgba(246, 99, 99, 0.4)",
-                    data.doubleTimeout / 2,
-                    data.doubleTimeout / 2
+                    message.data.doubleTimeout / 2,
+                    message.data.doubleTimeout / 2
                 );
                 break;
             }
-            case "IsKilled": {
+            case ServerMessageType.IsKilled: {
                 this.showGameplayInfo(
                     "Killed!",
                     "rgba(246, 99, 99, 0.4)",
-                    data.doubleTimeout / 2,
-                    data.doubleTimeout / 2
+                    message.data.doubleTimeout / 2,
+                    message.data.doubleTimeout / 2
                 );
                 break;
             }
-            case "IsNotKilled": {
+            case ServerMessageType.IsNotKilled: {
                 this.showGameplayInfo(
                     "You're lucky!",
                     "rgba(246, 204, 99, 0.4)",
-                    data.doubleTimeout / 2,
-                    data.doubleTimeout / 2
+                    message.data.doubleTimeout / 2,
+                    message.data.doubleTimeout / 2
                 );
                 break;
+            }
+            case ServerMessageType.Statistics: {
+                this.statistics = message.data;
             }
         }
     }
@@ -290,7 +309,7 @@ export class AppComponent implements OnInit {
         this.overlayService.resetOverlay();
     }
 
-    private showGameplayInfo(message, background, timeoutBeforeShowing, showingTimeout): void {
+    private showGameplayInfo(message: string, background: string, timeoutBeforeShowing: number, showingTimeout: number): void {
         new Promise(() => {
             setTimeout(() => {
                 this.overlayService.setOverlay(message, background)

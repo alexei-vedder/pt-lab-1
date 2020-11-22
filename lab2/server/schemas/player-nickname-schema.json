@@ -1,18 +1,12 @@
 {
-  "$ref": "#/definitions/ShotInfoSchema",
-  "definitions": {
-    "ShotInfoSchema": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "nickname": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "nickname"
-      ],
-      "title": "ShotInfoSchema"
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "nickname": {
+      "type": "string"
     }
-  }
+  },
+  "required": [
+    "nickname"
+  ]
 }

@@ -1,0 +1,198 @@
+{
+	"type": "object",
+	"properties": {
+		"type": {
+			"type": "string"
+		}
+	},
+	"required": [
+		"type"
+	],
+	"allOf": [
+		{
+			"if": {
+				"properties": {
+					"type": {
+						"const": "IdNotification"
+					}
+				}
+			},
+			"then": {
+				"properties": {
+					"data": {
+						"type": "object",
+						"properties": {
+							"id": {
+								"type": "string"
+							}
+						},
+						"required": [
+							"id"
+						]
+					}
+				},
+				"required": [
+					"data"
+				]
+			}
+		},
+		{
+			"if": {
+				"properties": {
+					"type": {
+						"const": "RoundStarted"
+					}
+				}
+			},
+			"then": {
+				"properties": {
+					"data": {
+						"type": "object",
+						"properties": {
+							"shootingPlayerId": {
+								"type": "string"
+							},
+							"playersCoordinates": {
+								"type": "object"
+							},
+							"gameFieldSize": {
+								"type": "object"
+							},
+							"groundCoordinates": {
+								"type": "object"
+							},
+							"cannonWidth": {
+								"type": "number"
+							},
+							"cannonballWidth": {
+								"type": "number"
+							},
+							"v0": {
+								"type": "number"
+							},
+							"g": {
+								"type": "number"
+							}
+						},
+						"required": [
+							"shootingPlayerId",
+							"playersCoordinates",
+							"gameFieldSize",
+							"groundCoordinates",
+							"cannonWidth",
+							"cannonballWidth",
+							"v0",
+							"g"
+						]
+					}
+				},
+				"required": [
+					"data"
+				]
+			}
+		},
+		{
+			"if": {
+				"properties": {
+					"type": {
+						"const": "Awaiting"
+					}
+				}
+			},
+			"then": true
+		},
+		{
+			"if": {
+				"properties": {
+					"type": {
+						"const": "OpponentShot"
+					}
+				}
+			},
+			"then": {
+				"properties": {
+					"data": {
+						"type": "object",
+						"properties": {
+							"angle": {
+								"type": "number"
+							}
+						},
+						"required": [
+							"angle"
+						]
+					}
+				},
+				"required": [
+					"data"
+				]
+			}
+		},
+		{
+			"if": {
+				"properties": {
+					"type": {
+						"enum": [
+							"HaveKilled",
+							"SlipUp",
+							"IsKilled",
+							"IsNotKilled"
+						]
+					}
+				}
+			},
+			"then": {
+				"properties": {
+					"data": {
+						"type": "object",
+						"properties": {
+							"doubleTimeout": {
+								"type": "number"
+							}
+						},
+						"required": [
+							"doubleTimeout"
+						]
+					}
+				},
+				"required": [
+					"data"
+				]
+			}
+		},
+		{
+			"if": {
+				"properties": {
+					"type": {
+						"const": "Statistics"
+					}
+				}
+			},
+			"then": {
+				"properties": {
+					"data": {
+						"type": "array",
+						"items": {
+							"type": "object",
+							"properties": {
+								"nickname": {
+									"type": "string"
+								},
+								"score": {
+									"type": "integer"
+								}
+							},
+							"required": [
+								"nickname",
+								"score"
+							]
+						}
+					}
+				},
+				"required": [
+					"data"
+				]
+			}
+		}
+	]
+}
