@@ -20,12 +20,18 @@ export function getRandomPlayerId(playersIds: string[]): string {
 
 export function validateShotInfoMessage(data: Object): boolean {
     const validation = validate(data, require("./schemas/shot-info-schema.json"));
-    console.log("Shot info validation:", validation)
+    console.log("Shot info validation:", validation);
     return validation.valid;
 }
 
 export function validatePlayerNicknameMessage(data: Object): boolean {
     const validation = validate(data, require("./schemas/player-nickname-schema.json"));
     console.log("Player nickname validation:", validation)
+    return validation.valid;
+}
+
+export function validateStatistics(data: Object): boolean {
+    const validation = validate(data, require("./schemas/statistics-schema.json"));
+    console.log("Shot info validation:", validation);
     return validation.valid;
 }

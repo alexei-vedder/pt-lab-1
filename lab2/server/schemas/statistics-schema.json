@@ -1,0 +1,18 @@
+{
+	"type": "array",
+	"items": {
+		"type": "object",
+		"properties": {
+			"nickname": {
+				"type": "string"
+			},
+			"score": {
+				"type": "integer"
+			}
+		},
+		"required": [
+			"nickname",
+			"score"
+		]
+	}
+}
