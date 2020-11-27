@@ -1,8 +1,14 @@
 import * as WebSocket from "ws";
 
+export interface StatEntity {
+    nickname: string;
+    score: number;
+}
+
 export interface Player {
     ws: WebSocket;
     id: string;
+    nickname?: string;
 }
 
 export interface LineCoordinates {
@@ -18,7 +24,6 @@ export interface GameFieldSize {
 }
 
 export interface RoundData {
-    type: string,
     shootingPlayerId: string,
     gameFieldSize: GameFieldSize,
     groundCoordinates: LineCoordinates,
@@ -29,4 +34,22 @@ export interface RoundData {
     playersCoordinates: {
         [playerId: string]: number
     }
+}
+
+
+export interface ServerMessage {
+    type: ServerMessageType,
+    data?: any
+}
+
+export enum ServerMessageType {
+    IdNotification = "IdNotification",
+    RoundStarted = "RoundStarted",
+    Awaiting = "Awaiting",
+    OpponentShot = "OpponentShot",
+    HaveKilled = "HaveKilled",
+    SlipUp = "SlipUp",
+    IsKilled = "IsKilled",
+    IsNotKilled = "IsNotKilled",
+    Statistics = "Statistics"
 }

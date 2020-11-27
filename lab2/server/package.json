@@ -2,16 +2,17 @@
   "name": "server",
   "version": "1.0.0",
   "scripts": {
-    "start": "node dist/server.js",
-    "copy-dependencies": "copy-newer --cwd node_modules ** ./dist/node_modules",
-    "build": "npm run copy-deps && tsc"
+    "deploy": "node dist/server.js",
+    "copy-dependencies": "copy-newer --cwd node_modules ** ./dist/node_modules && copy-newer --cwd schemas ** ./dist/schemas",
+    "build": "npm run copy-dependencies && tsc"
   },
   "dependencies": {
+    "@types/mathjs": "^6.0.5",
     "express": "^4.17.1",
     "http": "^0.0.1-security",
-    "ws": "^7.3.1",
-    "@types/mathjs": "^6.0.5",
-    "mathjs": "^7.5.1"
+    "jsonschema": "^1.4.0",
+    "mathjs": "^7.5.1",
+    "ws": "^7.3.1"
   },
   "devDependencies": {
     "@types/node": "^12.11.1",

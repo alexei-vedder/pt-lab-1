@@ -1,4 +1,9 @@
 <main class="main-container">
+    <score-table [model]="statistics"
+                 [maxEntities]="5"
+                 [selfNickname]="playerNickname">
+    </score-table>
+
     <svg #gameField
          [attr.height]="gameFieldSize.height"
          [attr.width]="gameFieldSize.width">
